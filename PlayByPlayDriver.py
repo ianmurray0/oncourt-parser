@@ -4,7 +4,7 @@ import pyodbc
 
 from OnCourtDriver import get_file_paths, clean_player_name
 from parsers.PlayParser import parse_entry
-from progress_bar.ProgressBar import update_progress
+from progress_bar.ProgressBar import update_progress 
 
 def main():
     """
@@ -16,6 +16,7 @@ def main():
 
     python PlayByPlayDriver.py [input_file/input_path] [output_path]
     """
+
     try: 
         if (len(sys.argv) != 3):
             raise SyntaxError("Invalid input arguments. Input command should be \
@@ -25,9 +26,9 @@ def main():
             raise FileNotFoundError(sys.argv[1] + " does not exist")
         if (os.path.exists(sys.argv[2])):
             raise FileExistsError(sys.argv[2] + " already exists")
-        
+        global conn
+        conn = connectToSQLDatabase()
         run(sys.argv[1], sys.argv[2])
-
     except SyntaxError as e:
         print(e)
     except FileNotFoundError as e:
@@ -171,6 +172,7 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                     "PointServer": point_server,
                     "Score": row[0],
                 }, ignore_index=True)
+              #  populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1],0,game_no,set_winner,point_no,set_winner,point_server,row[0])
                 game_no += 1
             elif (row[0] == "EndSet" ):
                 output_df = output_df.append({
@@ -186,6 +188,7 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                     "PointServer": point_server,
                     "Score": row[0]
                 }, ignore_index=True)
+              #  populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1],set_winner,game_no,set_winner,point_no,set_winner,point_server,row[1])
                 game_no = 0
                 set_no += 1
             elif (row[0] == "End"):
@@ -214,6 +217,7 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                     "PointServer": point_server,
                     "Score": row[0],
                 }, ignore_index=True)
+               # populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1],0,game_no,0,point_no, 1 if games[0] > games[1] else 2, point_server, row[0])
             point_no += 1
     return output_df
 
@@ -228,6 +232,21 @@ def connectToSQLDatabase():
     password = '{tennis2022!}'   
     driver= '{ODBC Driver 17 for SQL Server}'
     return pyodbc.connect('DRIVER='+driver+';SERVER=tcp:'+server+';PORT=1433;DATABASE='+database+';UID='+username+';PWD='+ password)
+
+def populateTableIN_PLAY_DATA(Key,SetNo,P1GamesWon,P2GamesWon,SetWinner,GameNo,GameWinner,PointNumber,PointWinner,PointServer,Score):
+    sql = 'EXEC [TennisModelling].[dbo].[]'
+    cursor = conn.cursor()
+    #sqlProcedure = "EXEC [SP_IN_PLAY_DATA_ADD](?,?,?,?,?,?,?,?,?,?,?)"
+    sqlInsert = "INSERT INTO [IN_PLAY_DATA]([IN_PLAY_DATA_KEY], [IN_PLAY_DATA_SET_NUMBER], [IN_PLAY_DATA_PLAYER_ONE_GAMES_WON], [IN_PLAY_DATA_PLAYER_TWO_GAMES_WON],[IN_PLAY_DATA_SET_WINNER],"\
+                  +"[IN_PLAY_DATA_GAME_NUMBER], [IN_PLAY_DATA_GAME_WINNER], [IN_PLAY_DATA_POINT_NUMBER], [IN_PLAY_DATA_POINT_WINNER], [IN_PLAY_DATA_POINT_SERVER],[IN_PLAY_DATA_SCORE]) "\
+                  +"VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+    parameters = (Key,SetNo,P1GamesWon,P2GamesWon,SetWinner,GameNo,GameWinner,PointNumber,PointWinner,PointServer,Score)
+    cursor.execute(sqlInsert, parameters)
+    '''
+    EXEC SP_IN_PLAY_DATA_ADD "+Key+", "+SetNo+", "+P1GamesWon+","+P2GamesWon+","+SetWinner+"\
+    "+GameNo+","+GameWinner+","+PointNumber+","+PointWinner+","+PointServer+",\"" + Score )
+    '''
+    conn.commit()
 
 if __name__ == "__main__":
     start = time.time()
