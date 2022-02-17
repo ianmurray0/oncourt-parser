@@ -1,5 +1,6 @@
 import sys, os, time, re
 import pandas as pd
+import pyodbc
 
 from OnCourtDriver import get_file_paths, clean_player_name
 from parsers.PlayParser import parse_entry
@@ -215,6 +216,18 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                 }, ignore_index=True)
             point_no += 1
     return output_df
+
+def connectToSQLDatabase():
+    """
+    This function is to connect to the Azure SQL database for the project. It only needs to be called once.
+    There is no input and the output is of type "conn". It is used for executing SQL functions in the database.
+    """
+    server = 'tennismodelling.database.windows.net'
+    database = 'TennisModelling'
+    username = 'tennisAdmin'
+    password = '{tennis2022!}'   
+    driver= '{ODBC Driver 17 for SQL Server}'
+    return pyodbc.connect('DRIVER='+driver+';SERVER=tcp:'+server+';PORT=1433;DATABASE='+database+';UID='+username+';PWD='+ password)
 
 if __name__ == "__main__":
     start = time.time()
