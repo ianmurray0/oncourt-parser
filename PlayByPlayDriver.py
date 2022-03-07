@@ -1,3 +1,4 @@
+from sqlite3 import Cursor
 import sys, os, time, re
 import pandas as pd
 import pyodbc
@@ -108,6 +109,8 @@ def get_play_data(df: pd.DataFrame):
         # Add function output to output DataFrame
         p1_name = clean_player_name(row[0])
         p2_name = clean_player_name(row[1])
+        populateTableIN_PLAY_DATA(p1_name)
+        populateTableIN_PLAY_DATA(p2_name)
         date = str(row[3])[0:10]
         entry_key = p1_name + " " + p2_name + " " + date
 
@@ -172,7 +175,7 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                     "PointServer": point_server,
                     "Score": row[0],
                 }, ignore_index=True)
-                populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1],\
+                populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1][0],\
                     0,game_no,set_winner,point_no,set_winner,point_server,row[0])
                 game_no += 1
             elif (row[0] == "EndSet" ):
@@ -189,8 +192,8 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                     "PointServer": point_server,
                     "Score": row[0]
                 }, ignore_index=True)
-                populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1],\
-                set_winner,game_no,set_winner,point_no,set_winner,point_server,row[1])
+                #populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1][0],\
+                #set_winner,game_no,set_winner,point_no,set_winner,point_server,row[1])
                 game_no = 0
                 set_no += 1
             elif (row[0] == "End"):
@@ -218,8 +221,9 @@ def parse_play_dataframe(df: pd.DataFrame, key: str) -> pd.DataFrame:
                     "PointWinner": 1 if games[0] > games[1] else 2,
                     "PointServer": point_server,
                     "Score": row[0],
-                }, ignore_index=True)
-                populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1][0],0,game_no,0,point_no, 1 if games[0] > games[1] else 2, point_server, row[0])
+                }, ignore_index=True) 
+                #populateTableIN_PLAY_DATA(key,set_no,set_games[0],set_games[1][0], \
+                # 0,game_no,0,point_no, 1 if games[0] > games[1] else 2, point_server, row[0])
             point_no += 1
     return output_df
 
@@ -235,14 +239,27 @@ def connectToSQLDatabase():
     driver= '{ODBC Driver 17 for SQL Server}'
     return pyodbc.connect('DRIVER='+driver+';SERVER=tcp:'+server+';PORT=1433;DATABASE='+database+';UID='+username+';PWD='+ password)
 
-def populateTableIN_PLAY_DATA(Key,SetNo,P1GamesWon,P2GamesWon,SetWinner,GameNo,GameWinner,PointNumber,PointWinner,PointServer,Score):
+def populateTableIN_PLAY_DATA(Key,SetNo,P1GamesWon,P2GamesWon,SetWinner,GameNo,GameWinner,\
+    PointNumber,PointWinner,PointServer,Score):
     cursor = conn.cursor()
-    sqlInsert = "INSERT INTO [IN_PLAY_DATA]([IN_PLAY_DATA_KEY], [IN_PLAY_DATA_SET_NUMBER], [IN_PLAY_DATA_PLAYER_ONE_GAMES_WON], [IN_PLAY_DATA_PLAYER_TWO_GAMES_WON],[IN_PLAY_DATA_SET_WINNER],"\
-                  +"[IN_PLAY_DATA_GAME_NUMBER], [IN_PLAY_DATA_GAME_WINNER], [IN_PLAY_DATA_POINT_NUMBER], [IN_PLAY_DATA_POINT_WINNER], [IN_PLAY_DATA_POINT_SERVER],[IN_PLAY_DATA_SCORE]) "\
+    sqlInsert = "INSERT INTO [IN_PLAY_DATA]([IN_PLAY_DATA_KEY], [IN_PLAY_DATA_SET_NUMBER], \
+        [IN_PLAY_DATA_PLAYER_ONE_GAMES_WON], [IN_PLAY_DATA_PLAYER_TWO_GAMES_WON],[IN_PLAY_DATA_SET_WINNER],"\
+                  +"[IN_PLAY_DATA_GAME_NUMBER], [IN_PLAY_DATA_GAME_WINNER], [IN_PLAY_DATA_POINT_NUMBER],\
+                       [IN_PLAY_DATA_POINT_WINNER], [IN_PLAY_DATA_POINT_SERVER],[IN_PLAY_DATA_SCORE]) "\
                   +"VALUES(?,?,?,?,?,?,?,?,?,?,?)"
-    parameters = (Key,SetNo,P1GamesWon,P2GamesWon,SetWinner,GameNo,GameWinner,PointNumber,PointWinner,PointServer,Score)
+    parameters = (Key,SetNo,P1GamesWon,P2GamesWon,SetWinner,GameNo,GameWinner,PointNumber,\
+        PointWinner,PointServer,Score)
     cursor.execute(sqlInsert, parameters)
     conn.commit()
+
+def populateTablePLAYER(PlayerName):
+    cursor = conn.cursor()
+    sqlInsert = "INSERT INTO [PLAYER](PLAYER_NAME)" \
+                  +"VALUES(?)"
+    parameters = (PlayerName)
+    cursor.execute(sqlInsert, parameters)
+    conn.commit()
+    
 
 if __name__ == "__main__":
     start = time.time()
